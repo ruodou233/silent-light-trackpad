@@ -2,6 +2,8 @@
 
 **Disable MacBook trackpad haptic feedback and tune click pressure on macOS.**
 
+> 苹果官方点击又重，线性马达还震得手指难受，用久了真有种要得滑膜炎、腱鞘炎的感觉。
+
 Silent Light Trackpad is a small, local menu bar app for people who want a truly silent Force Touch trackpad without giving up pressure-based clicking. It turns off the built-in haptic actuator, reads raw trackpad pressure, and generates a normal left click at your chosen threshold.
 
 Apple’s stock click takes too much force, and the linear actuator keeps kicking back into the fingertip—after a long session, it honestly feels like a fast track to synovitis or tenosynovitis.
@@ -95,8 +97,6 @@ OpenMultitouchSupport is MIT-licensed. Full dependency notices are included in [
 **彻底关闭 MacBook 触控板震动（触感反馈），同时保留可调力度的轻压点击。**
 
 Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Force Touch 触感马达，读取触控板原始压力，并在达到设定阈值时生成正常的左键点击和拖拽。
-
-苹果官方点击又重，线性马达还震得手指难受，用久了真有种要得滑膜炎、腱鞘炎的感觉。
 
 ![Silent Light Trackpad 中文菜单，显示 40、50、60 和 80 克力度选项](assets/menu-zh.png)
 
