@@ -1,0 +1,33 @@
+{
+  "originHash" : "25abaae9d9fd13de224630d4e87d2d8a13409bc1930636cf6104eaffd9f7445b",
+  "pins" : [
+    {
+      "identity" : "openmultitouchsupport",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kyome22/OpenMultitouchSupport.git",
+      "state" : {
+        "revision" : "99939bfed389c4984277cc5c0071c11b09f56440",
+        "version" : "4.0.0"
+      }
+    },
+    {
+      "identity" : "swift-async-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-async-algorithms.git",
+      "state" : {
+        "revision" : "3da39bbc4e687d4192af7c9cf4eab805745a0b9c",
+        "version" : "1.1.5"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
+        "version" : "1.6.0"
+      }
+    }
+  ],
+  "version" : 3
+}
