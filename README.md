@@ -4,6 +4,8 @@
 
 Silent Light Trackpad is a small, local menu bar app for people who want a truly silent Force Touch trackpad without giving up pressure-based clicking. It turns off the built-in haptic actuator, reads raw trackpad pressure, and generates a normal left click at your chosen threshold.
 
+Apple’s stock click takes too much force, and the linear actuator keeps kicking back into the fingertip—after a long session, it honestly feels like a fast track to synovitis or tenosynovitis.
+
 [中文说明](#中文说明)
 
 ![Silent Light Trackpad menu showing 40 g, 50 g, 60 g, and 80 g pressure presets](assets/menu-en.png)
@@ -38,9 +40,13 @@ macOS exposes a “Force Click and haptic feedback” option, but it does not pr
 
 The current version has been tested on a MacBook Air (Mac17,4) running macOS 26.5.2. Other Force Touch MacBooks are expected to work, but are not yet part of the tested matrix.
 
-This repository currently supports **building from source only**. It does not publish a Developer ID-signed or notarized download.
+## Download
 
-## Build and run
+[Download the Apple Silicon app](https://github.com/ruodou233/silent-light-trackpad/releases/latest/download/Silent-Light-Trackpad-macOS-arm64-unnotarized.zip)
+
+The package is ad-hoc signed and not notarized. On first launch, macOS may require **System Settings → Privacy & Security → Open Anyway**; then enable the app under **Accessibility**.
+
+## Build from source
 
 ```bash
 git clone https://github.com/ruodou233/silent-light-trackpad.git
@@ -90,6 +96,8 @@ OpenMultitouchSupport is MIT-licensed. Full dependency notices are included in [
 
 Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Force Touch 触感马达，读取触控板原始压力，并在达到设定阈值时生成正常的左键点击和拖拽。
 
+苹果官方点击又重，线性马达还震得手指难受，用久了真有种要得滑膜炎、腱鞘炎的感觉。
+
 ![Silent Light Trackpad 中文菜单，显示 40、50、60 和 80 克力度选项](assets/menu-zh.png)
 
 ### 主要功能
@@ -101,7 +109,13 @@ Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Fo
 - 菜单随系统语言显示中文或英文。
 - 无账号、无遥测、无后台联网服务。
 
-### 构建与使用
+### 下载安装
+
+[下载 Apple Silicon 安装包](https://github.com/ruodou233/silent-light-trackpad/releases/latest/download/Silent-Light-Trackpad-macOS-arm64-unnotarized.zip)
+
+安装包使用临时签名、未经 Apple 公证。第一次打开如果被阻止，请前往 **系统设置 → 隐私与安全性 → 仍要打开**，随后在 **辅助功能** 中允许应用。
+
+### 从源码构建
 
 ```bash
 git clone https://github.com/ruodou233/silent-light-trackpad.git
