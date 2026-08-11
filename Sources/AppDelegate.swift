@@ -6,17 +6,20 @@ import ServiceManagement
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let engine = LightClickEngine.shared
     private let haptics = HapticsController.shared
-    private let previewMode = CommandLine.arguments.contains("--preview-menu")
 
     private var statusItem: NSStatusItem!
     private var pressureItem: NSMenuItem!
     private var enabledItem: NSMenuItem!
     private var hapticsItem: NSMenuItem!
+    private var loginItem: NSMenuItem!
     private var thresholdItems: [NSMenuItem] = []
-    private var wakeObserver: NSObjectProtocol?
+    private var workspaceObservers: [NSObjectProtocol] = []
 
     private let tapOverrideActiveKey = "tapOverrideActive"
     private let originalTapToClickKey = "originalTapToClick"
+    private let launchAtLoginKey = "launchAtLoginEnabled"
+    private let lightClickKey = "lightClickEnabled"
+    private let loginRegistrationIdentityKey = "loginRegistrationIdentity"
 
     private var usesChinese: Bool {
         Locale.preferredLanguages.first?.hasPrefix("zh") == true
@@ -28,67 +31,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        guard requireApplicationsInstallation(), becomeOnlyInstance() else { return }
         buildMenu()
         configureCallbacks()
 
-        if previewMode {
-            enabledItem.state = .on
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                self?.statusItem.button?.performClick(nil)
-            }
-            return
-        }
-
+        syncLaunchAtLogin()
         requestAccessibilityIfNeeded()
-        guard engine.start() else {
-            showPermissionHelp()
-            return
-        }
-        guard temporarilyDisableSystemTapToClick() else {
-            engine.stop()
-            showAlert(
-                title: localized("Could not prepare Tap to click", "无法调整“轻点来点按”"),
-                message: localized("No system settings were changed. Try reopening the app.", "系统设置未被更改，请尝试重新打开应用。")
-            )
-            return
-        }
-        guard applyHapticsOff() else {
-            _ = restoreSystemTapToClick()
-            engine.stop()
-            showAlert(
-                title: localized("Could not disable haptics", "无法关闭触感"),
-                message: localized("The click engine was stopped and Tap to click was restored.", "轻压点击已停止，“轻点来点按”已恢复。")
-            )
-            return
-        }
-
-        if CommandLine.arguments.contains("--show") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                self?.statusItem.button?.performClick(nil)
-            }
-        }
-
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                if self?.applyHapticsOff() == false {
-                    self?.showAlert(
-                        title: self?.localized("Could not disable haptics after wake", "唤醒后无法关闭触感") ?? "Silent Light Trackpad",
-                        message: self?.localized("Use the menu to retry or restore all settings.", "请用菜单重试，或还原全部设置。") ?? ""
-                    )
-                }
-                if self?.engine.start() == false { self?.showPermissionHelp() }
-            }
-        }
+        startConfiguredServices(showErrors: true)
+        installResilienceObservers()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        guard !previewMode else { return }
         engine.stop()
-        if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
+        for observer in workspaceObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -109,8 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         enabledItem.target = self
         menu.addItem(enabledItem)
 
-        hapticsItem = NSMenuItem(title: localized("Haptics: checking", "触感：检查中"), action: #selector(toggleHaptics), keyEquivalent: "")
-        hapticsItem.target = self
+        hapticsItem = NSMenuItem(title: localized("Haptics: checking", "触感：检查中"), action: nil, keyEquivalent: "")
+        hapticsItem.isEnabled = false
         menu.addItem(hapticsItem)
 
         pressureItem = NSMenuItem(title: localized("Current pressure: 0 g", "当前压力：0 g"), action: nil, keyEquivalent: "")
@@ -133,10 +90,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(item)
         }
 
-        let login = NSMenuItem(title: localized("Launch at login", "登录时自动启动"), action: #selector(toggleLogin), keyEquivalent: "")
-        login.target = self
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        menu.addItem(login)
+        loginItem = NSMenuItem(title: localized("Launch at login", "登录时自动启动"), action: #selector(toggleLogin), keyEquivalent: "")
+        loginItem.target = self
+        menu.addItem(loginItem)
 
         menu.addItem(.separator())
         let permission = NSMenuItem(title: localized("Open Accessibility Settings…", "打开辅助功能设置…"), action: #selector(openAccessibility), keyEquivalent: "")
@@ -151,6 +107,162 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItem.menu = menu
         refreshMenu()
+    }
+
+    private var wantsLaunchAtLogin: Bool {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: launchAtLoginKey) == nil {
+            defaults.set(true, forKey: launchAtLoginKey)
+            return true
+        }
+        return defaults.bool(forKey: launchAtLoginKey)
+    }
+
+    private var wantsLightClick: Bool {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: lightClickKey) == nil {
+            defaults.set(true, forKey: lightClickKey)
+            return true
+        }
+        return defaults.bool(forKey: lightClickKey)
+    }
+
+    private var loginRegistrationIdentity: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+        return Bundle.main.bundleURL.standardizedFileURL.path + "|" + version
+    }
+
+    private func syncLaunchAtLogin(showErrors: Bool = false) {
+        _ = setLaunchAtLogin(wantsLaunchAtLogin, showErrors: showErrors)
+        refreshLoginItem()
+    }
+
+    @discardableResult
+    private func setLaunchAtLogin(_ enabled: Bool, showErrors: Bool = false) -> Bool {
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                let savedIdentity = UserDefaults.standard.string(forKey: loginRegistrationIdentityKey)
+                if service.status == .enabled, savedIdentity == loginRegistrationIdentity {
+                    return true
+                }
+                if service.status == .requiresApproval {
+                    return true
+                }
+                if service.status == .enabled {
+                    try service.unregister()
+                }
+                try service.register()
+                UserDefaults.standard.set(loginRegistrationIdentity, forKey: loginRegistrationIdentityKey)
+            } else {
+                if service.status == .enabled || service.status == .requiresApproval {
+                    try service.unregister()
+                }
+                UserDefaults.standard.removeObject(forKey: loginRegistrationIdentityKey)
+            }
+            return true
+        } catch {
+            if showErrors {
+                showAlert(
+                    title: localized("Launch at login needs attention", "登录自启需要处理"),
+                    message: localized(
+                        "Enable Silent Light Trackpad in System Settings → General → Login Items.",
+                        "请在“系统设置 → 通用 → 登录项”中允许 Silent Light Trackpad。"
+                    )
+                )
+            }
+            return false
+        }
+    }
+
+    private func refreshLoginItem() {
+        guard loginItem != nil else { return }
+        let status = SMAppService.mainApp.status
+        loginItem.state = status == .enabled ? .on : (wantsLaunchAtLogin ? .mixed : .off)
+        if status == .requiresApproval {
+            loginItem.title = localized("Launch at login: approval required", "登录时自动启动：需要批准")
+        } else {
+            loginItem.title = localized("Launch at login", "登录时自动启动")
+        }
+    }
+
+    private func startConfiguredServices(showErrors: Bool) {
+        guard applyHapticsOff() else {
+            if showErrors {
+                showAlert(
+                    title: localized("Could not disable haptics", "无法关闭触感"),
+                    message: localized("No click settings were changed. Try reopening the app.", "点击设置未被更改，请尝试重新打开应用。")
+                )
+            }
+            return
+        }
+        guard wantsLightClick else {
+            refreshMenu()
+            return
+        }
+        guard engine.start() else {
+            if showErrors { showPermissionHelp() }
+            return
+        }
+        guard temporarilyDisableSystemTapToClick() else {
+            engine.stop()
+            if showErrors {
+                showAlert(
+                    title: localized("Could not prepare Tap to click", "无法调整“轻点来点按”"),
+                    message: localized("Light-pressure click could not start. Haptics remain disabled.", "轻压点击无法启动，触感仍保持关闭。")
+                )
+            }
+            return
+        }
+        refreshMenu()
+    }
+
+    private func installResilienceObservers() {
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
+            let observer = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.recoverAfterSystemTransition() }
+            }
+            workspaceObservers.append(observer)
+        }
+    }
+
+    private func recoverAfterSystemTransition() {
+        if engine.isRunning {
+            engine.stop()
+        }
+        if wantsLightClick, !engine.isRunning, AXIsProcessTrusted() {
+            startConfiguredServices(showErrors: false)
+        } else if haptics.isEnabled != false {
+            _ = applyHapticsOff()
+        }
+        refreshMenu()
+    }
+
+    private func requireApplicationsInstallation() -> Bool {
+        let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
+        guard bundlePath.hasPrefix("/Applications/") else {
+            showAlert(
+                title: localized("Move to Applications", "请移到“应用程序”文件夹"),
+                message: localized(
+                    "Move Silent Light Trackpad to Applications before opening it. This keeps launch at login and Accessibility permission tied to one copy.",
+                    "请先把 Silent Light Trackpad 移到“应用程序”文件夹再打开，避免登录项和辅助功能权限指向不同副本。"
+                )
+            )
+            NSApp.terminate(nil)
+            return false
+        }
+        return true
+    }
+
+    private func becomeOnlyInstance() -> Bool {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return true }
+        let currentPID = NSRunningApplication.current.processIdentifier
+        guard let existing = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+            .first(where: { $0.processIdentifier != currentPID }) else { return true }
+        existing.activate()
+        NSApp.terminate(nil)
+        return false
     }
 
     private func configureCallbacks() {
@@ -206,7 +318,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try task.run()
             task.waitUntilExit()
-            guard task.terminationStatus == 0 else { return nil }
+            // A missing key means the system default (Tap to click off).
+            guard task.terminationStatus == 0 else { return false }
             let data = output.fileHandleForReading.readDataToEndOfFile()
             let value = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             return value == "1" || value.lowercased() == "true"
@@ -229,28 +342,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshMenu() {
-        enabledItem?.state = engineState ? .on : .off
+        if wantsLightClick {
+            enabledItem?.state = engine.isRunning ? .on : .mixed
+            enabledItem?.title = engine.isRunning
+                ? localized("Light-pressure click", "轻压点击")
+                : localized("Light-pressure click: Accessibility required", "轻压点击：需要辅助功能权限")
+        } else {
+            enabledItem?.state = .off
+            enabledItem?.title = localized("Light-pressure click", "轻压点击")
+        }
         hapticsItem?.title = haptics.isEnabled == false
             ? localized("Haptics: fully disabled", "触感：已彻底关闭")
             : localized("Haptics: still enabled", "触感：未关闭")
         hapticsItem?.state = haptics.isEnabled == false ? .on : .off
         for item in thresholdItems { item.state = item.tag == Int(engine.threshold) ? .on : .off }
+        refreshLoginItem()
     }
-
-    private var engineState: Bool { engine.isRunning }
 
     @objc private func toggleEnabled() {
-        if enabledItem.state == .on {
+        let shouldEnable = !wantsLightClick
+        if !shouldEnable {
             engine.stop()
-        } else if !engine.start() {
-            showPermissionHelp()
+            guard restoreSystemTapToClick() else {
+                if AXIsProcessTrusted() { startConfiguredServices(showErrors: false) }
+                showAlert(
+                    title: localized("Could not restore Tap to click", "无法恢复“轻点来点按”"),
+                    message: localized("Light-pressure click remains enabled. Try again.", "轻压点击仍保持开启，请重试。")
+                )
+                refreshMenu()
+                return
+            }
+            UserDefaults.standard.set(false, forKey: lightClickKey)
+        } else {
+            UserDefaults.standard.set(true, forKey: lightClickKey)
+            startConfiguredServices(showErrors: true)
         }
-        refreshMenu()
-    }
-
-    @objc private func toggleHaptics() {
-        let shouldEnable = haptics.isEnabled == false
-        _ = haptics.setEnabled(shouldEnable)
         refreshMenu()
     }
 
@@ -260,17 +386,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleLogin(_ sender: NSMenuItem) {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-                sender.state = .off
-            } else {
-                try SMAppService.mainApp.register()
-                sender.state = .on
-            }
-        } catch {
-            showAlert(title: localized("Could not change login item", "无法更改启动项"), message: error.localizedDescription)
+        let status = SMAppService.mainApp.status
+        let isRegistered = status == .enabled || status == .requiresApproval
+        let shouldEnable = !isRegistered
+        if setLaunchAtLogin(shouldEnable, showErrors: true) {
+            UserDefaults.standard.set(shouldEnable, forKey: launchAtLoginKey)
         }
+        refreshLoginItem()
     }
 
     @objc private func openAccessibility() {
@@ -297,14 +419,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !restoreSystemTapToClick() {
             failures.append(localized("Tap to click", "轻点来点按"))
         }
-        if SMAppService.mainApp.status == .enabled {
-            do {
-                try SMAppService.mainApp.unregister()
-            } catch {
-                failures.append(localized("launch at login", "登录自启"))
-            }
+        if !setLaunchAtLogin(false) {
+            failures.append(localized("launch at login", "登录自启"))
         }
         guard failures.isEmpty else {
+            _ = setLaunchAtLogin(wantsLaunchAtLogin)
+            startConfiguredServices(showErrors: false)
             showAlert(
                 title: localized("Some settings could not be restored", "部分设置未能还原"),
                 message: localized("Not restored: ", "未还原：") + failures.joined(separator: localized(", ", "、"))
@@ -313,6 +433,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         UserDefaults.standard.removeObject(forKey: "pressureThreshold")
+        UserDefaults.standard.removeObject(forKey: lightClickKey)
+        UserDefaults.standard.removeObject(forKey: loginRegistrationIdentityKey)
+        UserDefaults.standard.set(false, forKey: launchAtLoginKey)
         NSApp.terminate(nil)
     }
 

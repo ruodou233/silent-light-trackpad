@@ -17,7 +17,7 @@ Apple’s stock click takes too much force, and the linear actuator keeps kickin
 - Fully disables the built-in trackpad haptic feedback (the click vibration).
 - Keeps pressure-based click and drag working without the haptic click.
 - Offers approximate 40 g, **50 g (default)**, 60 g, and 80 g display presets.
-- Re-applies the haptic setting after wake.
+- Launches at login by default and repairs the haptic state after wake or session activation.
 - Supports English and Chinese menus based on the system language.
 - Runs locally with no analytics, network service, or account.
 - Provides an explicit **Restore everything and quit** command.
@@ -46,7 +46,7 @@ The current version has been tested on a MacBook Air (Mac17,4) running macOS 26.
 
 [Download the Apple Silicon app](https://github.com/ruodou233/silent-light-trackpad/releases/latest/download/Silent-Light-Trackpad-macOS-arm64-unnotarized.zip)
 
-The package is ad-hoc signed and not notarized. On first launch, macOS may require **System Settings → Privacy & Security → Open Anyway**; then enable the app under **Accessibility**.
+After extracting the ZIP, move the app to **Applications** before opening it. The package is ad-hoc signed and not notarized, so macOS may require **System Settings → Privacy & Security → Open Anyway** on first launch; then enable the app under **Accessibility**. Launch at login may also require approval in **System Settings → General → Login Items**.
 
 ## Build from source
 
@@ -54,7 +54,8 @@ The package is ad-hoc signed and not notarized. On first launch, macOS may requi
 git clone https://github.com/ruodou233/silent-light-trackpad.git
 cd silent-light-trackpad
 ./build-app.sh
-open "dist/Silent Light Trackpad.app"
+ditto "dist/Silent Light Trackpad.app" "/Applications/Silent Light Trackpad.app"
+open "/Applications/Silent Light Trackpad.app"
 ```
 
 On first launch, allow the app in **System Settings → Privacy & Security → Accessibility**, then reopen it. The hand icon in the menu bar opens all controls.
@@ -105,7 +106,7 @@ Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Fo
 - 彻底关闭内置触控板的点击震动／触感反馈。
 - 保留有压力门槛的点击，不把轻划误判成点击。
 - 四档近似显示力度：40 g、**50 g（默认）**、60 g、80 g。
-- 睡眠唤醒后自动重新关闭触感。
+- 默认登录自启，并在唤醒或会话恢复时自动修复触感。
 - 菜单随系统语言显示中文或英文。
 - 无账号、无遥测、无后台联网服务。
 
@@ -113,7 +114,7 @@ Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Fo
 
 [下载 Apple Silicon 安装包](https://github.com/ruodou233/silent-light-trackpad/releases/latest/download/Silent-Light-Trackpad-macOS-arm64-unnotarized.zip)
 
-安装包使用临时签名、未经 Apple 公证。第一次打开如果被阻止，请前往 **系统设置 → 隐私与安全性 → 仍要打开**，随后在 **辅助功能** 中允许应用。
+解压后请先把应用移到 **应用程序** 文件夹再打开。安装包使用临时签名、未经 Apple 公证；第一次打开如果被阻止，请前往 **系统设置 → 隐私与安全性 → 仍要打开**，随后在 **辅助功能** 中允许应用。登录自启也可能需要在 **系统设置 → 通用 → 登录项** 中批准。
 
 ### 从源码构建
 
@@ -121,7 +122,8 @@ Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Fo
 git clone https://github.com/ruodou233/silent-light-trackpad.git
 cd silent-light-trackpad
 ./build-app.sh
-open "dist/Silent Light Trackpad.app"
+ditto "dist/Silent Light Trackpad.app" "/Applications/Silent Light Trackpad.app"
+open "/Applications/Silent Light Trackpad.app"
 ```
 
 第一次启动时，请前往 **系统设置 → 隐私与安全性 → 辅助功能** 允许应用控制点击，然后重新打开应用。

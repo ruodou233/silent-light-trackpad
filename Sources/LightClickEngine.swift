@@ -21,11 +21,10 @@ final class LightClickEngine {
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
 
-    private var enabled = false
     private var fingerID: Int32?
     private var buttonDown = false
     private var sequenceActive = false
-    private var lastPressure: Float = 0
+    private var waitForAllFingersToLift = false
     private var ignoreNativeMouseUpUntil: CFTimeInterval = 0
 
     private init() {
@@ -34,7 +33,7 @@ final class LightClickEngine {
     }
 
     func start() -> Bool {
-        guard !enabled else { return true }
+        guard !isRunning else { return true }
         guard installEventTap() else { return false }
 
         listeningTask = Task { [weak self, manager] in
@@ -42,13 +41,14 @@ final class LightClickEngine {
                 guard let self else { return }
                 self.process(touches)
             }
+            guard !Task.isCancelled else { return }
+            self?.stop()
         }
 
         guard manager.startListening() else {
             stop()
             return false
         }
-        enabled = true
         isRunning = true
         onStateChange?(true)
         return true
@@ -63,9 +63,9 @@ final class LightClickEngine {
         if let eventTap { CFMachPortInvalidate(eventTap) }
         eventTapSource = nil
         eventTap = nil
-        enabled = false
         isRunning = false
         resetSequence()
+        waitForAllFingersToLift = false
         onStateChange?(false)
     }
 
@@ -129,13 +129,19 @@ final class LightClickEngine {
             }
         }
 
+        if active.isEmpty {
+            finishSequence()
+            waitForAllFingersToLift = false
+            return
+        }
+
+        guard !waitForAllFingersToLift else { return }
         guard active.count == 1, let touch = active.first else {
-            if active.isEmpty {
-                finishSequence()
-            } else if sequenceActive {
+            if sequenceActive {
                 releaseButtonIfNeeded()
                 resetSequence()
             }
+            waitForAllFingersToLift = true
             return
         }
 
@@ -145,10 +151,10 @@ final class LightClickEngine {
         }
         guard fingerID == touch.id else { return }
 
-        lastPressure = max(0, touch.pressure)
-        onPressureChange?(lastPressure)
+        let pressure = max(0, touch.pressure)
+        onPressureChange?(pressure)
 
-        if !buttonDown, lastPressure >= threshold {
+        if !buttonDown, pressure >= threshold {
             postMouseEvent(type: .leftMouseDown)
             buttonDown = true
         }
@@ -170,7 +176,6 @@ final class LightClickEngine {
     private func resetSequence() {
         fingerID = nil
         sequenceActive = false
-        lastPressure = 0
         onPressureChange?(0)
     }
 
