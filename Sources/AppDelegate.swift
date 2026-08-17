@@ -187,21 +187,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startConfiguredServices(showErrors: Bool) {
+        // Mute-only users can disable haptics without Accessibility.
+        // Light-click users must keep a remaining click path: do not mute
+        // until the engine is up, and never mute if the haptic API is missing.
+        if !wantsLightClick {
+            if haptics.isEnabled == nil {
+                refreshMenu()
+                return
+            }
+            _ = applyHapticsOff()
+            refreshMenu()
+            return
+        }
+
+        guard AXIsProcessTrusted() else {
+            refreshMenu()
+            return
+        }
+        guard haptics.isEnabled != nil else {
+            refreshMenu()
+            return
+        }
+        guard engine.start() else {
+            if showErrors { showPermissionHelp() }
+            refreshMenu()
+            return
+        }
         guard applyHapticsOff() else {
+            engine.stop()
             if showErrors {
                 showAlert(
                     title: localized("Could not disable haptics", "无法关闭触感"),
                     message: localized("No click settings were changed. Try reopening the app.", "点击设置未被更改，请尝试重新打开应用。")
                 )
             }
-            return
-        }
-        guard wantsLightClick else {
-            refreshMenu()
-            return
-        }
-        guard engine.start() else {
-            if showErrors { showPermissionHelp() }
             return
         }
         guard temporarilyDisableSystemTapToClick() else {
@@ -231,9 +250,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if engine.isRunning {
             engine.stop()
         }
-        if wantsLightClick, !engine.isRunning, AXIsProcessTrusted() {
-            startConfiguredServices(showErrors: false)
-        } else if haptics.isEnabled != false {
+        if wantsLightClick {
+            if AXIsProcessTrusted() {
+                startConfiguredServices(showErrors: false)
+            }
+            // No remaining click path: do not mute on wake.
+        } else if haptics.isEnabled != nil {
             _ = applyHapticsOff()
         }
         refreshMenu()
