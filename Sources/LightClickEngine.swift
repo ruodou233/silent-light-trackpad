@@ -14,7 +14,9 @@ final class LightClickEngine {
 
     var onPressureChange: ((Float) -> Void)?
     var onStateChange: ((Bool) -> Void)?
-    private(set) var isRunning = false
+    var isRunning: Bool {
+        listeningTask != nil && eventTap != nil
+    }
 
     private let manager = OMSManager.shared
     private var listeningTask: Task<Void, Never>?
@@ -23,13 +25,11 @@ final class LightClickEngine {
 
     private var fingerID: Int32?
     private var buttonDown = false
-    private var sequenceActive = false
     private var waitForAllFingersToLift = false
     private var ignoreNativeMouseUpUntil: CFTimeInterval = 0
 
     private init() {
-        let saved = UserDefaults.standard.float(forKey: "pressureThreshold")
-        threshold = saved > 0 ? saved : 50
+        threshold = UserDefaults.standard.float(forKey: "pressureThreshold")
     }
 
     func start() -> Bool {
@@ -49,7 +49,6 @@ final class LightClickEngine {
             stop()
             return false
         }
-        isRunning = true
         onStateChange?(true)
         return true
     }
@@ -63,7 +62,6 @@ final class LightClickEngine {
         if let eventTap { CFMachPortInvalidate(eventTap) }
         eventTapSource = nil
         eventTap = nil
-        isRunning = false
         resetSequence()
         waitForAllFingersToLift = false
         onStateChange?(false)
@@ -137,7 +135,7 @@ final class LightClickEngine {
 
         guard !waitForAllFingersToLift else { return }
         guard active.count == 1, let touch = active.first else {
-            if sequenceActive {
+            if fingerID != nil {
                 releaseButtonIfNeeded()
                 resetSequence()
             }
@@ -147,7 +145,6 @@ final class LightClickEngine {
 
         if fingerID == nil {
             fingerID = touch.id
-            sequenceActive = true
         }
         guard fingerID == touch.id else { return }
 
@@ -161,7 +158,7 @@ final class LightClickEngine {
     }
 
     private func finishSequence() {
-        guard sequenceActive else { return }
+        guard fingerID != nil else { return }
         releaseButtonIfNeeded()
         resetSequence()
     }
@@ -175,7 +172,6 @@ final class LightClickEngine {
 
     private func resetSequence() {
         fingerID = nil
-        sequenceActive = false
         onPressureChange?(0)
     }
 

@@ -16,6 +16,7 @@ final class HapticsController {
     private let getEnabled: GetEnabled?
     private let setEnabled: SetEnabled?
     private let releaseDevice: ReleaseDevice?
+    private(set) var isEnabled: Bool?
 
     private init() {
         let path = "/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport"
@@ -33,19 +34,17 @@ final class HapticsController {
     }
 
     func setEnabled(_ enabled: Bool) -> Bool {
-        guard let createDevice, let getActuator, let setEnabled, let releaseDevice,
-              let device = createDevice() else { return false }
+        guard let createDevice, let getActuator, let getEnabled, let setEnabled, let releaseDevice,
+              let device = createDevice() else {
+            isEnabled = nil
+            return false
+        }
         defer { releaseDevice(device) }
-        guard let actuator = getActuator(device) else { return false }
-        guard setEnabled(actuator, enabled ? 1 : 0) == 0 else { return false }
+        guard let actuator = getActuator(device), setEnabled(actuator, enabled ? 1 : 0) == 0 else {
+            isEnabled = nil
+            return false
+        }
+        isEnabled = getEnabled(actuator) == 1
         return isEnabled == enabled
-    }
-
-    var isEnabled: Bool? {
-        guard let createDevice, let getActuator, let getEnabled, let releaseDevice,
-              let device = createDevice() else { return nil }
-        defer { releaseDevice(device) }
-        guard let actuator = getActuator(device) else { return nil }
-        return getEnabled(actuator) == 1
     }
 }

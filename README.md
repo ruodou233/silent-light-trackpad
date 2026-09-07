@@ -58,7 +58,7 @@ ditto "dist/Silent Light Trackpad.app" "/Applications/Silent Light Trackpad.app"
 open "/Applications/Silent Light Trackpad.app"
 ```
 
-On first launch, allow the app in **System Settings → Privacy & Security → Accessibility**, then reopen it. The hand icon in the menu bar opens all controls.
+On first launch, allow the app in **System Settings → Privacy & Security → Accessibility**, then return to the app; pressure clicking starts automatically. The hand icon in the menu bar opens all controls.
 
 ## Restore behavior
 
@@ -126,7 +126,7 @@ ditto "dist/Silent Light Trackpad.app" "/Applications/Silent Light Trackpad.app"
 open "/Applications/Silent Light Trackpad.app"
 ```
 
-第一次启动时，请前往 **系统设置 → 隐私与安全性 → 辅助功能** 允许应用控制点击，然后重新打开应用。
+第一次启动时，请前往 **系统设置 → 隐私与安全性 → 辅助功能** 允许应用控制点击，然后返回应用；轻压点击会自动启动。
 
 普通的 **退出（保留当前设置）** 不会重新开启震动。需要恢复系统原状时，选择 **一切还原并退出…**；确认后，它会恢复触感、恢复原来的“轻点来点按”、关闭登录自启、把下次默认力度重置为 50 g，然后退出。
 
