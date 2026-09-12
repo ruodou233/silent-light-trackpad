@@ -1,6 +1,6 @@
-# Silent Light Trackpad
+# MacBook 触控板静音与力度调节｜MacBook Trackpad Haptics & Click Pressure
 
-**Disable MacBook trackpad haptic feedback and tune click pressure on macOS.**
+**Disable MacBook trackpad haptic feedback and adjust click pressure.**
 
 > 苹果官方点击又重，线性马达还震得手指难受，用久了真有种要得滑膜炎、腱鞘炎的感觉。
 
