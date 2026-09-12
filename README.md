@@ -10,13 +10,13 @@ Apple’s stock click takes too much force, and the linear actuator keeps kickin
 
 [中文说明](#中文说明)
 
-![Silent Light Trackpad menu showing 40 g, 50 g, 60 g, and 80 g pressure presets](assets/menu-en.png)
+![Silent Light Trackpad menu showing 40, 50, 60, and 80 force presets (older screenshot)](assets/menu-en.png)
 
 ## Features
 
 - Fully disables the built-in trackpad haptic feedback (the click vibration).
 - Keeps pressure-based click and drag working without the haptic click.
-- Offers approximate 40 g, **50 g (default)**, 60 g, and 80 g display presets.
+- Offers 40, **50 (default)**, 60, and 80 display presets.
 - Launches at login by default and repairs the haptic state after wake or session activation.
 - Supports English and Chinese menus based on the system language.
 - Runs locally with no analytics, network service, or account.
@@ -24,10 +24,10 @@ Apple’s stock click takes too much force, and the linear actuator keeps kickin
 
 | Preset | Displayed pressure | Intended feel |
 | --- | ---: | --- |
-| Light | 40 g | Very easy to trigger |
-| Default | **50 g** | Light but resistant to casual brushing |
-| Steady | 60 g | More deliberate |
-| Guarded | 80 g | Strongest protection against accidental clicks |
+| Light | 40 | Very easy to trigger |
+| Default | **50** | Light but resistant to casual brushing |
+| Steady | 60 | More deliberate |
+| Guarded | 80 | Strongest protection against accidental clicks |
 
 ## Why not just use macOS settings?
 
@@ -69,7 +69,7 @@ Choose **Restore everything and quit…** to:
 1. Restore haptic feedback.
 2. Restore the original “Tap to click” value.
 3. Disable launch at login.
-4. Reset the saved pressure preset to 50 g.
+4. Reset the saved pressure preset to 50.
 5. Quit the app.
 
 Every restored setting is read back or checked. If any step fails, the app stays open, reports the item that failed, and keeps the saved restore information so you can retry.
@@ -80,7 +80,7 @@ Every restored setting is read back or checked. If any step fails, the app stays
 - The current implementation targets the built-in/default trackpad, not an external Magic Trackpad.
 - While active, the app disables the system “Tap to click” preference to avoid duplicate clicks. Use **Restore everything and quit…** to put that preference back exactly as it was.
 - Avoid clicking an external mouse at the exact moment a pressure click is held on the trackpad; macOS exposes both through the same global mouse-event stream.
-- The values shown as `g` are practical raw-pressure display thresholds, not physical gram measurements calibrated across MacBook models.
+- Force values are raw-pressure thresholds, not calibrated physical measurements.
 - The build script uses ad-hoc signing. A locally built copy may need Accessibility permission again after rebuilding.
 
 ## How it works
@@ -99,13 +99,13 @@ OpenMultitouchSupport is MIT-licensed. Full dependency notices are included in [
 
 Silent Light Trackpad 是一个纯本地 macOS 菜单栏工具。它会关闭 Force Touch 触感马达，读取触控板原始压力，并在达到设定阈值时生成正常的左键点击和拖拽。
 
-![Silent Light Trackpad 中文菜单，显示 40、50、60 和 80 克力度选项](assets/menu-zh.png)
+![Silent Light Trackpad 中文菜单，显示 40、50、60 和 80 力度选项（旧版截图）](assets/menu-zh.png)
 
 ### 主要功能
 
 - 彻底关闭内置触控板的点击震动／触感反馈。
 - 保留有压力门槛的点击，不把轻划误判成点击。
-- 四档近似显示力度：40 g、**50 g（默认）**、60 g、80 g。
+- 四档力度：40、**50（默认）**、60、80。
 - 默认登录自启，并在唤醒或会话恢复时自动修复触感。
 - 菜单随系统语言显示中文或英文。
 - 无账号、无遥测、无后台联网服务。
@@ -128,7 +128,7 @@ open "/Applications/Silent Light Trackpad.app"
 
 第一次启动时，请前往 **系统设置 → 隐私与安全性 → 辅助功能** 允许应用控制点击，然后返回应用；轻压点击会自动启动。
 
-普通的 **退出（保留当前设置）** 不会重新开启震动。需要恢复系统原状时，选择 **一切还原并退出…**；确认后，它会恢复触感、恢复原来的“轻点来点按”、关闭登录自启、把下次默认力度重置为 50 g，然后退出。
+普通的 **退出（保留当前设置）** 不会重新开启震动。需要恢复系统原状时，选择 **一切还原并退出…**；确认后，它会恢复触感、恢复原来的“轻点来点按”、关闭登录自启、把下次默认力度重置为 50，然后退出。
 
 每一项恢复都会回读或检查。任何一步失败时，应用不会退出，并会保留恢复依据供再次尝试。
 
@@ -138,4 +138,4 @@ open "/Applications/Silent Light Trackpad.app"
 - 当前针对 MacBook 内置 Force Touch 触控板，不保证支持外接 Magic Trackpad。
 - 应用运行期间会暂时关闭系统“轻点来点按”，以免产生重复点击；“一切还原”会准确恢复接管前的原值。
 - 按住触控板压力点击的同一瞬间，请避免同时点击外接鼠标；macOS 会把两者暴露在同一条全局鼠标事件流中。
-- 界面中的 `g` 是便于选择的原始压力近似显示值，并非跨 MacBook 机型校准后的物理克数。
+- 界面中的力度数值是原始压力阈值，不代表经过校准的物理重量。

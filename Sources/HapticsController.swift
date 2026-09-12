@@ -33,6 +33,23 @@ final class HapticsController {
         return unsafeBitCast(raw, to: T.self)
     }
 
+    @discardableResult
+    func readEnabled() -> Bool? {
+        guard let createDevice, let getActuator, let getEnabled, let releaseDevice,
+              let device = createDevice() else {
+            isEnabled = nil
+            return nil
+        }
+        defer { releaseDevice(device) }
+        guard let actuator = getActuator(device) else {
+            isEnabled = nil
+            return nil
+        }
+        let value = getEnabled(actuator)
+        isEnabled = value == 0 ? false : (value == 1 ? true : nil)
+        return isEnabled
+    }
+
     func setEnabled(_ enabled: Bool) -> Bool {
         guard let createDevice, let getActuator, let getEnabled, let setEnabled, let releaseDevice,
               let device = createDevice() else {

@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var loginItem: NSMenuItem!
     private var thresholdItems: [NSMenuItem] = []
 
-    private let originalTapToClickKey = "originalTapToClick"
     private let launchAtLoginConfiguredKey = "launchAtLoginEnabled"
     private let lightClickKey = "lightClickEnabled"
     private let restorePendingKey = "restorePending"
@@ -64,7 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        statusItem.button?.performClick(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.statusItem?.button?.performClick(nil)
+        }
         return true
     }
 
@@ -85,17 +86,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hapticsItem.isEnabled = false
         menu.addItem(hapticsItem)
 
-        pressureItem = NSMenuItem(title: localized("Current pressure: 0 g", "当前压力：0 g"), action: nil, keyEquivalent: "")
+        pressureItem = NSMenuItem(title: localized("Current force: 0", "当前力度：0"), action: nil, keyEquivalent: "")
         pressureItem.isEnabled = false
         menu.addItem(pressureItem)
         menu.addItem(.separator())
 
-        let sensitivity = NSMenuItem(title: localized("Sensitivity", "灵敏度"), action: nil, keyEquivalent: "")
+        let sensitivity = NSMenuItem(title: localized("Force", "力度"), action: nil, keyEquivalent: "")
         sensitivity.isEnabled = false
         menu.addItem(sensitivity)
         let presets = usesChinese
-            ? [("轻 · 40 g", 40), ("默认 · 50 g", 50), ("稳妥 · 60 g", 60), ("防误触 · 80 g", 80)]
-            : [("Light · 40 g", 40), ("Default · 50 g", 50), ("Steady · 60 g", 60), ("Guarded · 80 g", 80)]
+            ? [("轻 · 40", 40), ("默认 · 50", 50), ("稳妥 · 60", 60), ("防误触 · 80", 80)]
+            : [("Light · 40", 40), ("Default · 50", 50), ("Steady · 60", 60), ("Guarded · 80", 80)]
         for (title, value) in presets {
             let item = NSMenuItem(title: title, action: #selector(selectThreshold(_:)), keyEquivalent: "")
             item.target = self
@@ -259,7 +260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureCallbacks() {
         engine.onPressureChange = { [weak self] pressure in
-            let format = self?.localized("Current pressure: %.0f g", "当前压力：%.0f g") ?? "%.0f g"
+            let format = self?.localized("Current force: %.0f", "当前力度：%.0f") ?? "%.0f"
             self?.pressureItem.title = String(format: format, pressure)
         }
         engine.onStateChange = { [weak self] _ in self?.refreshMenu() }
@@ -277,56 +278,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func temporarilyDisableSystemTapToClick() -> Bool {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: originalTapToClickKey) != nil {
-            return writeSystemTapToClick(false)
-        }
-
-        guard let original = readSystemTapToClick() else { return false }
-        if original, !writeSystemTapToClick(false) { return false }
-        defaults.set(original, forKey: originalTapToClickKey)
-        return true
+        TapToClickOverride.disable()
     }
 
     private func restoreSystemTapToClick() -> Bool {
-        let defaults = UserDefaults.standard
-        guard let original = defaults.object(forKey: originalTapToClickKey) as? Bool else { return true }
-        guard writeSystemTapToClick(original) else { return false }
-        defaults.removeObject(forKey: originalTapToClickKey)
-        return true
-    }
-
-    private func readSystemTapToClick() -> Bool? {
-        let task = Process()
-        let output = Pipe()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        task.arguments = ["read", "com.apple.AppleMultitouchTrackpad", "Clicking"]
-        task.standardOutput = output
-        task.standardError = Pipe()
-        do {
-            try task.run()
-            task.waitUntilExit()
-            // A missing key means the system default (Tap to click off).
-            guard task.terminationStatus == 0 else { return false }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            let value = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            return value == "1" || value.lowercased() == "true"
-        } catch {
-            return nil
-        }
-    }
-
-    private func writeSystemTapToClick(_ enabled: Bool) -> Bool {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        task.arguments = ["write", "com.apple.AppleMultitouchTrackpad", "Clicking", "-bool", enabled ? "true" : "false"]
-        do {
-            try task.run()
-        } catch {
-            return false
-        }
-        task.waitUntilExit()
-        return task.terminationStatus == 0 && readSystemTapToClick() == enabled
+        TapToClickOverride.restore()
     }
 
     private func refreshMenu() {

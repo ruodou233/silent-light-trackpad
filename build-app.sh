@@ -4,8 +4,8 @@ set -euo pipefail
 project_dir="${0:A:h}"
 cd "$project_dir"
 
-swift build -c release
-bin_dir="$(swift build -c release --show-bin-path)"
+swift build -j 2 -c release
+bin_dir="$(swift build -j 2 -c release --show-bin-path)"
 app_dir="$project_dir/dist/Silent Light Trackpad.app"
 
 if [[ "$app_dir" != "$project_dir/dist/Silent Light Trackpad.app" ]]; then

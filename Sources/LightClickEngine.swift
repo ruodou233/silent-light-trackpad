@@ -23,13 +23,12 @@ final class LightClickEngine {
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
 
-    private var fingerID: Int32?
-    private var buttonDown = false
-    private var waitForAllFingersToLift = false
+    private var sequence = ClickSequence()
+    private var buttonDown: Bool { sequence.buttonDown }
     private var ignoreNativeMouseUpUntil: CFTimeInterval = 0
 
     private init() {
-        threshold = UserDefaults.standard.float(forKey: "pressureThreshold")
+        threshold = pressureThreshold(from: UserDefaults.standard.object(forKey: "pressureThreshold"))
     }
 
     func start() -> Bool {
@@ -62,8 +61,8 @@ final class LightClickEngine {
         if let eventTap { CFMachPortInvalidate(eventTap) }
         eventTapSource = nil
         eventTap = nil
-        resetSequence()
-        waitForAllFingersToLift = false
+        sequence = ClickSequence()
+        onPressureChange?(0)
         onStateChange?(false)
     }
 
@@ -127,52 +126,18 @@ final class LightClickEngine {
             }
         }
 
-        if active.isEmpty {
-            finishSequence()
-            waitForAllFingersToLift = false
-            return
-        }
-
-        guard !waitForAllFingersToLift else { return }
-        guard active.count == 1, let touch = active.first else {
-            if fingerID != nil {
-                releaseButtonIfNeeded()
-                resetSequence()
-            }
-            waitForAllFingersToLift = true
-            return
-        }
-
-        if fingerID == nil {
-            fingerID = touch.id
-        }
-        guard fingerID == touch.id else { return }
-
-        let pressure = max(0, touch.pressure)
-        onPressureChange?(pressure)
-
-        if !buttonDown, pressure >= threshold {
-            postMouseEvent(type: .leftMouseDown)
-            buttonDown = true
-        }
-    }
-
-    private func finishSequence() {
-        guard fingerID != nil else { return }
-        releaseButtonIfNeeded()
-        resetSequence()
+        let result = sequence.update(active.map { ClickTouch(id: $0.id, pressure: $0.pressure) }, threshold: threshold)
+        if let pressure = result.pressure { onPressureChange?(pressure) }
+        for event in result.events { emit(event) }
     }
 
     private func releaseButtonIfNeeded() {
-        guard buttonDown else { return }
-        postMouseEvent(type: .leftMouseUp)
-        buttonDown = false
-        ignoreNativeMouseUpUntil = CACurrentMediaTime() + 0.15
+        if let event = sequence.release() { emit(event) }
     }
 
-    private func resetSequence() {
-        fingerID = nil
-        onPressureChange?(0)
+    private func emit(_ event: ClickSequence.Event) {
+        postMouseEvent(type: event == .down ? .leftMouseDown : .leftMouseUp)
+        if event == .up { ignoreNativeMouseUpUntil = CACurrentMediaTime() + 0.15 }
     }
 
     private func postMouseEvent(type: CGEventType) {
