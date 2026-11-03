@@ -114,7 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } catch {
             if showErrors {
                 showAlert(
-                    title: localized("Launch at login needs attention", "登录自启需要处理"),
+                    title: localized("Open at login needs attention", "“登录时打开”需要处理"),
                     message: localized(
                         "Enable Silent Light Trackpad in System Settings → General → Login Items.",
                         "请在“系统设置 → 通用 → 登录项”中允许 Silent Light Trackpad。"
