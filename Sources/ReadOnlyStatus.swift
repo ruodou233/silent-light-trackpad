@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import ServiceManagement
 
 @MainActor
@@ -14,10 +13,7 @@ func printReadOnlyStatus() -> Int32 {
     }
     let status: [String: Any] = [
         "bundleVersion": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") ?? NSNull(),
-        "AXIsProcessTrusted": AXIsProcessTrusted(),
         "SMAppService.mainApp.status": loginStatus,
-        "lightClickEnabled": UserDefaults.standard.bool(forKey: "lightClickEnabled"),
-        "pressureThreshold": UserDefaults.standard.float(forKey: "pressureThreshold"),
         "haptics.isEnabled": HapticsController.shared.readEnabled().map { $0 as Any } ?? NSNull(),
     ]
     do {
