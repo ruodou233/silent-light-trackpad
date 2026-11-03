@@ -2,7 +2,7 @@ import AppKit
 import ServiceManagement
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Left behind by versions up to 0.5.1, which still had the light-pressure click engine.
     nonisolated static let legacyPreferenceKeys = [
         "lightClickEnabled", "pressureThreshold", "originalTapToClickState", "originalTapToClick",
@@ -35,10 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMenu()
 
         configureDefaultLaunchAtLoginIfNeeded()
-        if !isRestorePending {
-            _ = haptics.setEnabled(false)
-        }
-        refreshMenu()
+        syncHaptics()
         installResilienceObservers()
     }
 
@@ -55,14 +52,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "hand.tap", accessibilityDescription: "Silent Light Trackpad")
+        statusItem.menu = makeMenu()
+    }
 
+    func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        let title = NSMenuItem(title: "Silent Light Trackpad", action: nil, keyEquivalent: "")
-        title.isEnabled = false
-        menu.addItem(title)
-
-        hapticsItem = NSMenuItem(title: localized("Haptics: checking", "触感：检查中"), action: nil, keyEquivalent: "")
+        menu.delegate = self
+        hapticsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         hapticsItem.isEnabled = false
         menu.addItem(hapticsItem)
         menu.addItem(.separator())
@@ -78,9 +74,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let quit = NSMenuItem(title: localized("Quit (keep settings)", "退出（保留当前设置）"), action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
+        return menu
+    }
 
-        statusItem.menu = menu
-        refreshMenu()
+    func menuWillOpen(_ menu: NSMenu) {
+        syncHaptics()
     }
 
     private var isRestorePending: Bool {
@@ -89,14 +87,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureDefaultLaunchAtLoginIfNeeded() {
         let defaults = UserDefaults.standard
-        guard defaults.object(forKey: launchAtLoginConfiguredKey) == nil else {
-            refreshLoginItem()
-            return
-        }
+        guard defaults.object(forKey: launchAtLoginConfiguredKey) == nil else { return }
         if setLaunchAtLogin(true) {
             defaults.set(true, forKey: launchAtLoginConfiguredKey)
         }
-        refreshLoginItem()
     }
 
     @discardableResult
@@ -127,17 +121,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func refreshLoginItem() {
-        guard loginItem != nil else { return }
-        let status = SMAppService.mainApp.status
-        loginItem.state = status == .enabled ? .on : (status == .requiresApproval ? .mixed : .off)
-        if status == .requiresApproval {
-            loginItem.title = localized("Launch at login: approval required", "登录时自动启动：需要批准")
-        } else {
-            loginItem.title = localized("Launch at login", "登录时自动启动")
-        }
-    }
-
     private func installResilienceObservers() {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
@@ -146,11 +129,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func recoverAfterSystemTransition(_ notification: Notification) {
-        guard !isRestorePending else {
-            refreshMenu()
-            return
+        syncHaptics()
+    }
+
+    private func syncHaptics() {
+        if isRestorePending {
+            haptics.readEnabled()
+        } else {
+            _ = haptics.setEnabled(false)
         }
-        _ = haptics.setEnabled(false)
         refreshMenu()
     }
 
@@ -181,11 +168,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshMenu() {
-        hapticsItem?.title = haptics.isEnabled == false
-            ? localized("Haptics: fully disabled", "触感：已彻底关闭")
-            : localized("Haptics: still enabled", "触感：未关闭")
-        hapticsItem?.state = haptics.isEnabled == false ? .on : .off
-        refreshLoginItem()
+        let status = HapticsStatus(wantsOff: !isRestorePending, isEnabled: haptics.isEnabled)
+        show(status, login: SMAppService.mainApp.status)
+        // `--status` reads this instead of guessing from the command line.
+        let defaults = UserDefaults.standard
+        defaults.set(status.rawValue, forKey: HapticsStatus.reportedStatusKey)
+        defaults.set(Int(NSRunningApplication.current.processIdentifier), forKey: HapticsStatus.reportedPIDKey)
+        defaults.set(Date(), forKey: HapticsStatus.reportedAtKey)
+    }
+
+    func show(_ status: HapticsStatus, login: SMAppService.Status) {
+        let title: String
+        switch status {
+        case .off: title = localized("Haptics are off", "触感已关闭")
+        case .on: title = localized("Haptics are on", "触感已开启")
+        case .failed: title = localized("Could not turn off haptics", "触感未能关闭")
+        case .unknown: title = localized("Haptics state unavailable", "读不到触感状态")
+        }
+        hapticsItem?.title = title
+        statusItem?.button?.image = status.menuBarImage
+        statusItem?.button?.toolTip = title
+
+        loginItem?.state = login == .enabled ? .on : (login == .requiresApproval ? .mixed : .off)
+        loginItem?.title = login == .requiresApproval
+            ? localized("Launch at login: approval required", "登录时自动启动：需要批准")
+            : localized("Launch at login", "登录时自动启动")
     }
 
     @objc private func toggleLogin(_ sender: NSMenuItem) {
@@ -198,7 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if setLaunchAtLogin(shouldEnable, showErrors: true) {
             UserDefaults.standard.set(true, forKey: launchAtLoginConfiguredKey)
         }
-        refreshLoginItem()
+        refreshMenu()
     }
 
     @objc private func restoreEverythingAndQuit() {

@@ -45,8 +45,7 @@ final class HapticsController {
             isEnabled = nil
             return nil
         }
-        let value = getEnabled(actuator)
-        isEnabled = value == 0 ? false : (value == 1 ? true : nil)
+        isEnabled = Self.decode(getEnabled(actuator))
         return isEnabled
     }
 
@@ -61,7 +60,11 @@ final class HapticsController {
             isEnabled = nil
             return false
         }
-        isEnabled = getEnabled(actuator) == 1
+        isEnabled = Self.decode(getEnabled(actuator))
         return isEnabled == enabled
+    }
+
+    private static func decode(_ value: Int) -> Bool? {
+        value == 0 ? false : (value == 1 ? true : nil)
     }
 }
