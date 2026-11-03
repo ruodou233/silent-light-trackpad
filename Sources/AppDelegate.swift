@@ -6,17 +6,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Left behind by versions up to 0.5.1, which still had the light-pressure click engine.
     nonisolated static let legacyPreferenceKeys = [
         "lightClickEnabled", "pressureThreshold", "originalTapToClickState", "originalTapToClick",
-        "loginRegistrationIdentity", "tapOverrideActive",
+        "loginRegistrationIdentity", "tapOverrideActive", "restorePending",
     ]
 
     private let haptics = HapticsController.shared
 
     private var statusItem: NSStatusItem!
-    private var hapticsItem: NSMenuItem!
+    private var statusLine: NSMenuItem!
+    private var hapticsOffItem: NSMenuItem!
     private var loginItem: NSMenuItem!
 
     private let launchAtLoginConfiguredKey = "launchAtLoginEnabled"
-    private let restorePendingKey = "restorePending"
+    private let hapticsWantedKey = "hapticsWanted" // Set when the user asks for haptics back.
 
     private var usesChinese: Bool {
         Locale.preferredLanguages.first?.hasPrefix("zh") == true
@@ -58,20 +59,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func makeMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
-        hapticsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        hapticsItem.isEnabled = false
-        menu.addItem(hapticsItem)
+        statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        statusLine.isEnabled = false
+        menu.addItem(statusLine)
         menu.addItem(.separator())
 
-        loginItem = NSMenuItem(title: localized("Launch at login", "登录时自动启动"), action: #selector(toggleLogin), keyEquivalent: "")
+        hapticsOffItem = NSMenuItem(title: localized("Disable haptics", "关闭触感"), action: #selector(toggleHapticsOff), keyEquivalent: "")
+        hapticsOffItem.target = self
+        menu.addItem(hapticsOffItem)
+        loginItem = NSMenuItem(title: localized("Open at login", "登录时打开"), action: #selector(toggleLogin), keyEquivalent: "")
         loginItem.target = self
         menu.addItem(loginItem)
 
         menu.addItem(.separator())
-        let restore = NSMenuItem(title: localized("Restore everything and quit…", "一切还原并退出…"), action: #selector(restoreEverythingAndQuit), keyEquivalent: "")
+        let restore = NSMenuItem(title: localized("Restore and quit…", "还原并退出…"), action: #selector(restoreAndQuit), keyEquivalent: "")
         restore.target = self
         menu.addItem(restore)
-        let quit = NSMenuItem(title: localized("Quit (keep settings)", "退出（保留当前设置）"), action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: localized("Quit", "退出"), action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         return menu
@@ -81,8 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         syncHaptics()
     }
 
-    private var isRestorePending: Bool {
-        UserDefaults.standard.bool(forKey: restorePendingKey)
+    private var wantsHapticsOff: Bool {
+        !UserDefaults.standard.bool(forKey: hapticsWantedKey)
     }
 
     private func configureDefaultLaunchAtLoginIfNeeded() {
@@ -133,11 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func syncHaptics() {
-        if isRestorePending {
-            haptics.readEnabled()
-        } else {
-            _ = haptics.setEnabled(false)
-        }
+        _ = haptics.setEnabled(!wantsHapticsOff)
         refreshMenu()
     }
 
@@ -168,8 +168,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshMenu() {
-        let status = HapticsStatus(wantsOff: !isRestorePending, isEnabled: haptics.isEnabled)
-        show(status, login: SMAppService.mainApp.status)
+        let status = HapticsStatus(wantsOff: wantsHapticsOff, isEnabled: haptics.isEnabled)
+        show(status, wantsOff: wantsHapticsOff, login: SMAppService.mainApp.status)
         // `--status` reads this instead of guessing from the command line.
         let defaults = UserDefaults.standard
         defaults.set(status.rawValue, forKey: HapticsStatus.reportedStatusKey)
@@ -177,22 +177,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.set(Date(), forKey: HapticsStatus.reportedAtKey)
     }
 
-    func show(_ status: HapticsStatus, login: SMAppService.Status) {
+    func show(_ status: HapticsStatus, wantsOff: Bool, login: SMAppService.Status) {
         let title: String
         switch status {
         case .off: title = localized("Haptics are off", "触感已关闭")
         case .on: title = localized("Haptics are on", "触感已开启")
-        case .failed: title = localized("Could not turn off haptics", "触感未能关闭")
+        case .failed: title = localized("Could not disable haptics — retry below", "触感未能关闭，点“关闭触感”重试")
         case .unknown: title = localized("Haptics state unavailable", "读不到触感状态")
         }
-        hapticsItem?.title = title
+        statusLine?.title = title
         statusItem?.button?.image = status.menuBarImage
         statusItem?.button?.toolTip = title
+        hapticsOffItem?.state = !wantsOff ? .off : (status == .off ? .on : .mixed)
 
         loginItem?.state = login == .enabled ? .on : (login == .requiresApproval ? .mixed : .off)
         loginItem?.title = login == .requiresApproval
-            ? localized("Launch at login: approval required", "登录时自动启动：需要批准")
-            : localized("Launch at login", "登录时自动启动")
+            ? localized("Open at login: approval required", "登录时打开：需要批准")
+            : localized("Open at login", "登录时打开")
+    }
+
+    @objc private func toggleHapticsOff() {
+        // While haptics are wanted off but do not read off, the checked item retries instead of flipping.
+        let retry = wantsHapticsOff && haptics.isEnabled != false
+        if !retry {
+            UserDefaults.standard.set(wantsHapticsOff, forKey: hapticsWantedKey)
+        }
+        syncHaptics()
     }
 
     @objc private func toggleLogin(_ sender: NSMenuItem) {
@@ -208,18 +218,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshMenu()
     }
 
-    @objc private func restoreEverythingAndQuit() {
+    @objc private func restoreAndQuit() {
         let alert = NSAlert()
-        alert.messageText = localized("Restore all system settings?", "还原全部系统设置？")
+        alert.messageText = localized("Restore and quit?", "还原并退出？")
         alert.informativeText = localized(
-            "This restores trackpad haptics, disables launch at login, and quits the app. Tap to click is not changed.",
-            "这会恢复触控板触感，关闭登录自启，然后退出应用。“轻点来点按”不受影响。"
+            "This turns trackpad haptics back on, turns off Open at login, and quits the app. Tap to click is not changed.",
+            "这会恢复触控板触感，关闭“登录时打开”，然后退出应用。“轻点来点按”不受影响。"
         )
         alert.addButton(withTitle: localized("Restore and quit", "还原并退出"))
         alert.addButton(withTitle: localized("Cancel", "取消"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        UserDefaults.standard.set(true, forKey: restorePendingKey)
+        UserDefaults.standard.set(true, forKey: hapticsWantedKey)
         var failures: [String] = []
         if !haptics.setEnabled(true) {
             failures.append(localized("trackpad haptics", "触控板触感"))
@@ -227,7 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if setLaunchAtLogin(false) {
             UserDefaults.standard.set(true, forKey: launchAtLoginConfiguredKey)
         } else {
-            failures.append(localized("launch at login", "登录自启"))
+            failures.append(localized("Open at login", "登录时打开"))
         }
         guard failures.isEmpty else {
             refreshMenu()
@@ -238,7 +248,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             return
         }
-        UserDefaults.standard.removeObject(forKey: restorePendingKey)
+        refreshMenu()
+        // Reopening the app later turns haptics off again.
+        UserDefaults.standard.removeObject(forKey: hapticsWantedKey)
         NSApp.terminate(nil)
     }
 

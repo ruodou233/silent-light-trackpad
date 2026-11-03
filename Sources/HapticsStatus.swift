@@ -25,13 +25,13 @@ enum HapticsStatus: String {
         guard let hand = NSImage(systemSymbolName: "hand.tap", accessibilityDescription: description) else { return nil }
         guard self != .off,
               let badge = NSImage(systemSymbolName: "exclamationmark.circle.fill", accessibilityDescription: nil)?
-                .withSymbolConfiguration(.init(pointSize: 8, weight: .bold)) else { return hand }
+                .withSymbolConfiguration(.init(pointSize: 7, weight: .bold)) else { return hand }
         // Same hand with a cut-out badge in the lower right: haptics are not off right now.
         let image = NSImage(size: NSSize(width: hand.size.width + 4, height: hand.size.height + 1), flipped: false) { rect in
             hand.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1)
             let badgeRect = NSRect(x: rect.maxX - badge.size.width, y: 0, width: badge.size.width, height: badge.size.height)
             NSGraphicsContext.current?.compositingOperation = .destinationOut
-            NSBezierPath(ovalIn: badgeRect.insetBy(dx: -1.5, dy: -1.5)).fill()
+            NSBezierPath(ovalIn: badgeRect.insetBy(dx: -1.2, dy: -1.2)).fill()
             badge.draw(in: badgeRect, from: .zero, operation: .sourceOver, fraction: 1)
             return true
         }
