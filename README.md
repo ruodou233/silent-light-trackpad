@@ -46,7 +46,7 @@ This app does not change any of these; set them in **System Settings → Trackpa
 - macOS 15 or newer
 - Swift 6.2 or newer to build from source
 
-The current version has been tested on a MacBook Air (Mac17,4) running macOS 26.5.2.
+0.6.0 passes its offline self-tests on a MacBook Air (Mac17,4) running macOS 26.5.2; checks on the real trackpad are still pending.
 
 ## Download
 
@@ -85,6 +85,8 @@ app="/Applications/Silent Light Trackpad.app/Contents/MacOS/SilentLightTrackpad"
 ### Upgrading from 0.5.x
 
 - Quit the old version with plain **Quit (keep settings)**, not **Restore everything and quit…**: the old restore turns haptics back on and turns off launch at login, and the new version will not turn launch at login back on by itself.
+- If you already used the old **Restore everything and quit…**, **Open at login** stays off in the new version until you click it in the menu.
+- Delete the old app from Applications first, then copy the new one. Copying over it with `ditto` keeps the old `Contents/Frameworks` folder inside the new app, which breaks its signature.
 - On its first launch the new version clears the old version's preference keys (pressure preset, engine switch, Tap to click snapshot). It never changes Tap to click. The old engine only turned Tap to click off while it was running; if that happened to you, turn it back on in System Settings → Trackpad.
 
 ## Important limitations
@@ -164,6 +166,8 @@ open "/Applications/Silent Light Trackpad.app"
 #### 从 0.5.x 升级
 
 - 旧版用普通的 **退出（保留当前设置）** 退出，不要用 **一切还原并退出…**：旧版的还原会打开触感、关掉登录自启，新版不会自己把登录项开回来。
+- 如果已经在旧版里用过 **一切还原并退出…**，新版的 **登录时打开** 会一直关着，要在菜单里点一下才会打开。
+- 先把旧的 app 从“应用程序”里删掉，再复制新的。用 `ditto` 直接覆盖会把旧的 `Contents/Frameworks` 目录留在新 app 里，签名就坏了。
 - 新版第一次启动会清掉旧版留下的偏好（力度档、引擎开关、“轻点来点按”快照），但从不改“轻点来点按”。旧版只在引擎运行时关过“轻点来点按”；如果你遇到过，请在 系统设置 → 触控板 里把它打开。
 
 ### 注意
