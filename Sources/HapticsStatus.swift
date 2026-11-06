@@ -34,7 +34,7 @@ enum HapticsStatus: String {
             // The user asked for haptics back, so this is the tool standing down, not an alarm.
             // SF Symbols has no hand.tap.slash (checked on the macOS 26.5 SDK), so it is the same hand, dimmed.
             let image = NSImage(size: hand.size, flipped: false) { _ in
-                hand.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 0.4)
+                hand.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 0.55)
                 return true
             }
             image.isTemplate = true
