@@ -266,8 +266,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func moveToApplicationsAlert() -> NSAlert {
         makeAlert(
             title: localized("Move to Applications", "请移到“应用程序”文件夹"),
-            message: localized("Reopen it after moving.", "移动后重新打开。"),
-            confirm: localized("OK", "好"),
+            message: "",
+            confirm: localized("Quit", "退出"),
             cancellable: false
         )
     }
