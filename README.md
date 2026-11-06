@@ -26,8 +26,8 @@ The app no longer needs Accessibility permission. If an older version is still l
 
 - Turns off the built-in trackpad's haptic actuator (the click vibration).
 - Re-applies your choice after wake, when the login session becomes active, and whenever the menu opens (macOS turns haptics back on after sleep).
-- The menu bar icon shows the real state: a plain hand means haptics are off; a hand with an exclamation badge means haptics are on (you asked for them back, or turning them off failed) or the state cannot be read. The first menu line says the same in words.
-- Four menu items: **Disable haptics**, **Open at login**, **Restore and quit…**, **Quit**.
+- The menu bar icon shows the real state: a plain hand means haptics are off; a dimmed hand means you turned them back on; a hand with an exclamation badge means turning them off failed or the state cannot be read. Hover over the icon for the state in words.
+- Four menu items: **Disable Haptics**, **Open at Login**, **Restore Haptics and Quit…**, **Quit**. Only when something is wrong does the menu gain a status line, and **Disable Haptics** becomes **Retry Turning Off Haptics**.
 - Opens at login by default. English or Chinese menu, following the system language.
 - Runs locally with no analytics, network service, or account. No third-party code.
 
@@ -46,13 +46,13 @@ This app does not change any of these; set them in **System Settings → Trackpa
 - macOS 15 or newer
 - Swift 6.2 or newer to build from source
 
-0.6.0 passes its offline self-tests on a MacBook Air (Mac17,4) running macOS 26.5.2; checks on the real trackpad are still pending.
+0.7.0 passes its offline self-tests on a MacBook Air (Mac17,4) running macOS 26.5.2; checks on the real trackpad are still pending.
 
 ## Download
 
 [Download the Apple Silicon app](https://github.com/ruodou233/silent-light-trackpad/releases/latest/download/Silent-Light-Trackpad-macOS-arm64-unnotarized.zip)
 
-After extracting the ZIP, move the app to **Applications** before opening it. The package is ad-hoc signed and not notarized, so macOS may require **System Settings → Privacy & Security → Open Anyway** on first launch. Open at login may also require approval in **System Settings → General → Login Items**.
+After extracting the ZIP, move the app to **Applications** before opening it. The package is ad-hoc signed and not notarized, so macOS may require **System Settings → Privacy & Security → Open Anyway** on first launch. Open at Login may also require approval in **System Settings → General → Login Items**.
 
 ## Build from source
 
@@ -79,13 +79,13 @@ app="/Applications/Silent Light Trackpad.app/Contents/MacOS/SilentLightTrackpad"
 ## Restore behavior
 
 - **Quit** leaves haptics as they are. If they were off, they stay off until the next sleep/wake or restart without the app, when macOS turns them back on.
-- Unchecking **Disable haptics** turns haptics back on while the app keeps running; the choice is remembered across launches.
-- **Restore and quit…** turns haptics back on, turns off Open at login, and quits. Tap to click is not touched. Each step is checked; if one fails, the app stays open and names the failed item. Opening the app again later turns haptics off again.
+- Unchecking **Disable Haptics** turns haptics back on while the app keeps running; the choice is remembered across launches.
+- **Restore Haptics and Quit…** turns haptics back on, turns off Open at Login, and quits. Tap to click is not touched. Each step is checked; if one fails, the app stays open, names the failed item and offers **Retry**. Opening the app again later turns haptics off again.
 
 ### Upgrading from 0.5.x
 
 - Quit the old version with plain **Quit (keep settings)**, not **Restore everything and quit…**: the old restore turns haptics back on and turns off launch at login, and the new version will not turn launch at login back on by itself.
-- If you already used the old **Restore everything and quit…**, **Open at login** stays off in the new version until you click it in the menu.
+- If you already used the old **Restore everything and quit…**, **Open at Login** stays off in the new version until you click it in the menu.
 - Delete the old app from Applications first, then copy the new one. Copying over it with `ditto` keeps the old `Contents/Frameworks` folder inside the new app, which breaks its signature.
 - On its first launch the new version clears the old version's preference keys (pressure preset, engine switch, Tap to click snapshot). It never changes Tap to click. The old engine only turned Tap to click off while it was running; if that happened to you, turn it back on in System Settings → Trackpad.
 
@@ -125,8 +125,8 @@ Silent Light Trackpad 是一个纯本地的 macOS 菜单栏工具。它关掉内
 
 - 关闭内置触控板的触感马达（点击震动）。
 - 唤醒、登录会话恢复以及每次打开菜单时，按你的选择重新设置一次马达（系统睡眠唤醒后会把触感打开）。
-- 菜单栏图标显示真实状态：普通的手 = 触感已关闭；手带感叹号 = 触感开着（你选择了恢复，或者关闭失败）或读不到状态。菜单第一行用文字写同样的状态。
-- 菜单只有四项：**关闭触感**、**登录时打开**、**还原并退出…**、**退出**。
+- 菜单栏图标显示真实状态：普通的手 = 触感已关闭；变暗的手 = 你选择了打开触感；手带感叹号 = 没关上或无法读取。悬停在图标上能看到文字状态。
+- 菜单只有四项：**关闭触感**、**登录时打开**、**恢复触感并退出…**、**退出**。只有出问题时才多一行状态，同时 **关闭触感** 换成 **重试关闭触感**。
 - 默认登录时打开。菜单随系统语言显示中文或英文。
 - 无账号、无遥测、不联网，没有第三方代码。
 
@@ -155,13 +155,13 @@ ditto "dist/Silent Light Trackpad.app" "/Applications/Silent Light Trackpad.app"
 open "/Applications/Silent Light Trackpad.app"
 ```
 
-`--self-test`（纯状态自测）和 `--status`（只读状态）都在创建菜单之前就退出，什么都不改。`--status` 输出运行中的实例自己报告的状态（`instance.status`：`off` 已关闭、`on` 已开启、`failed` 关闭失败、`unknown` 读不到；`instance.running` 实例是否还在运行），登录项状态，以及直接读马达得到的 `haptics.isEnabled`，用来交叉核对。
+`--self-test`（纯状态自测）和 `--status`（只读状态）都在创建菜单之前就退出，什么都不改。`--status` 输出运行中的实例自己报告的状态（`instance.status`：`off` 已关闭、`on` 已打开、`failed` 未能关闭、`unknown` 无法读取；`instance.running` 实例是否还在运行），登录项状态，以及直接读马达得到的 `haptics.isEnabled`，用来交叉核对。
 
-### 还原
+### 恢复
 
 - **退出**：触感保持原样。如果是关着的，会一直关到下次睡眠唤醒或重启（那时本工具没在运行，系统会把触感打开）。
 - 取消勾选 **关闭触感**：应用继续运行，触感恢复；这个选择重启后仍然有效。
-- **还原并退出…**：恢复触感，关闭“登录时打开”，然后退出。不碰“轻点来点按”。每一步都会回读检查；有一步失败，应用不退出，并写明哪一项没还原。之后再打开应用，触感又会关上。
+- **恢复触感并退出…**：恢复触感，关闭“登录时打开”，然后退出。不碰“轻点来点按”。每一步都会回读检查；有一步失败，应用不退出，写明哪一项没恢复，并可以点 **重试**。之后再打开应用，触感又会关上。
 
 #### 从 0.5.x 升级
 
