@@ -210,7 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleHapticsOff() {
-        // While haptics are wanted off but do not read off, the checked item retries instead of flipping.
+        // While haptics are wanted off but do not read off, this item is "Retry" and does not flip the choice.
         let retry = wantsHapticsOff && haptics.isEnabled != false
         if !retry {
             UserDefaults.standard.set(wantsHapticsOff, forKey: hapticsWantedKey)
