@@ -115,16 +115,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             return true
         } catch {
-            if showErrors {
-                makeAlert(
-                    title: localized("Open at login needs attention", "“登录时打开”需要处理"),
-                    message: localized(
-                        "Enable Silent Light Trackpad in System Settings → General → Login Items.",
-                        "请在“系统设置 → 通用 → 登录项”中允许 Silent Light Trackpad。"
-                    ),
-                    confirm: localized("OK", "好"),
-                    cancellable: false
-                ).runModal()
+            if showErrors, loginItemFailedAlert(enabling: enabled).runModal() == .alertFirstButtonReturn {
+                SMAppService.openSystemSettingsLoginItems()
             }
             return false
         }
@@ -277,6 +269,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message: localized("Reopen it after moving.", "移动后重新打开。"),
             confirm: localized("OK", "好"),
             cancellable: false
+        )
+    }
+
+    func loginItemFailedAlert(enabling: Bool) -> NSAlert {
+        // Turning it off goes through here too, so the wording follows the direction.
+        makeAlert(
+            title: enabling
+                ? localized("Couldn't Turn On Open at Login", "无法设为登录时打开")
+                : localized("Couldn't Turn Off Open at Login", "无法取消登录时打开"),
+            message: enabling
+                ? localized("Allow Silent Light Trackpad in Login Items for this to take effect.", "在“登录项”中允许Silent Light Trackpad后生效。")
+                : localized("Turn off Silent Light Trackpad in Login Items for this to take effect.", "在“登录项”中关闭Silent Light Trackpad后生效。"),
+            confirm: localized("Open Login Items Settings…", "打开登录项设置…")
         )
     }
 
