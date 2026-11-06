@@ -16,7 +16,9 @@ func runSelfTests() -> Int32 {
     check(HapticsStatus(wantsOff: false, isEnabled: true) == .on, "on when the user asked for haptics")
     check(HapticsStatus(wantsOff: true, isEnabled: true) == .failed, "failed when off was wanted but reads on")
     check(HapticsStatus(wantsOff: true, isEnabled: nil) == .unknown, "unknown when unreadable")
+    check(!HapticsStatus.off.isProblem && !HapticsStatus.on.isProblem, "no menu line when haptics are as the user asked")
+    check(HapticsStatus.failed.isProblem && HapticsStatus.unknown.isProblem, "menu line when off failed or state is unreadable")
     for failure in failures { print("FAIL: \(failure)") }
-    print(failures.isEmpty ? "PASS: 13 self-tests (pure state only; no input or preference access)" : "FAILED: \(failures.count)")
+    print(failures.isEmpty ? "PASS: 15 self-tests (pure state only; no input or preference access)" : "FAILED: \(failures.count)")
     return failures.isEmpty ? 0 : 1
 }

@@ -15,6 +15,9 @@ enum HapticsStatus: String {
         }
     }
 
+    // Off and on are both what the user asked for; only these two earn a line of text in the menu.
+    var isProblem: Bool { self == .failed || self == .unknown }
+
     static let reportedStatusKey = "reportedStatus"
     static let reportedPIDKey = "reportedPID"
     static let reportedAtKey = "reportedAt"

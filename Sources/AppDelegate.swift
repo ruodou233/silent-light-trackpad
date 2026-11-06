@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var statusLine: NSMenuItem!
+    private var statusSeparator: NSMenuItem!
     private var hapticsOffItem: NSMenuItem!
     private var loginItem: NSMenuItem!
 
@@ -59,20 +60,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func makeMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
+        // These two appear only when something is wrong; otherwise the icon and the checkmark say it all.
         statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         statusLine.isEnabled = false
         menu.addItem(statusLine)
-        menu.addItem(.separator())
+        statusSeparator = .separator()
+        menu.addItem(statusSeparator)
 
-        hapticsOffItem = NSMenuItem(title: localized("Disable haptics", "关闭触感"), action: #selector(toggleHapticsOff), keyEquivalent: "")
+        hapticsOffItem = NSMenuItem(title: localized("Disable Haptics", "关闭触感"), action: #selector(toggleHapticsOff), keyEquivalent: "")
         hapticsOffItem.target = self
         menu.addItem(hapticsOffItem)
-        loginItem = NSMenuItem(title: localized("Open at login", "登录时打开"), action: #selector(toggleLogin), keyEquivalent: "")
+        loginItem = NSMenuItem(title: localized("Open at Login", "登录时打开"), action: #selector(toggleLogin), keyEquivalent: "")
         loginItem.target = self
         menu.addItem(loginItem)
 
         menu.addItem(.separator())
-        let restore = NSMenuItem(title: localized("Restore and quit…", "还原并退出…"), action: #selector(restoreAndQuit), keyEquivalent: "")
+        let restore = NSMenuItem(title: localized("Restore Haptics and Quit…", "恢复触感并退出…"), action: #selector(restoreAndQuit), keyEquivalent: "")
         restore.target = self
         menu.addItem(restore)
         let quit = NSMenuItem(title: localized("Quit", "退出"), action: #selector(quit), keyEquivalent: "q")
@@ -113,13 +116,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return true
         } catch {
             if showErrors {
-                showAlert(
+                makeAlert(
                     title: localized("Open at login needs attention", "“登录时打开”需要处理"),
                     message: localized(
                         "Enable Silent Light Trackpad in System Settings → General → Login Items.",
                         "请在“系统设置 → 通用 → 登录项”中允许 Silent Light Trackpad。"
-                    )
-                )
+                    ),
+                    confirm: localized("OK", "好"),
+                    cancellable: false
+                ).runModal()
             }
             return false
         }
@@ -144,13 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func requireApplicationsInstallation() -> Bool {
         let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
         guard bundlePath.hasPrefix("/Applications/") else {
-            showAlert(
-                title: localized("Move to Applications", "请移到“应用程序”文件夹"),
-                message: localized(
-                    "Move Silent Light Trackpad to Applications before opening it. This keeps launch at login tied to one copy.",
-                    "请先把 Silent Light Trackpad 移到“应用程序”文件夹再打开，避免登录项指向不同副本。"
-                )
-            )
+            moveToApplicationsAlert().runModal()
             NSApp.terminate(nil)
             return false
         }
@@ -177,23 +176,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.set(Date(), forKey: HapticsStatus.reportedAtKey)
     }
 
-    func show(_ status: HapticsStatus, wantsOff: Bool, login: SMAppService.Status) {
-        let title: String
+    func statusText(_ status: HapticsStatus) -> String {
         switch status {
-        case .off: title = localized("Haptics are off", "触感已关闭")
-        case .on: title = localized("Haptics are on", "触感已开启")
-        case .failed: title = localized("Could not disable haptics — retry below", "触感未能关闭，点“关闭触感”重试")
-        case .unknown: title = localized("Haptics state unavailable", "读不到触感状态")
+        case .off: localized("Haptics are off", "触感已关闭")
+        case .on: localized("Haptics are on", "触感已打开")
+        case .failed: localized("Couldn't Turn Off Haptics", "未能关闭触感")
+        case .unknown: localized("Couldn't Read Haptics State", "无法读取触感状态")
         }
-        statusLine?.title = title
-        statusItem?.button?.image = status.menuBarImage
-        statusItem?.button?.toolTip = title
-        hapticsOffItem?.state = !wantsOff ? .off : (status == .off ? .on : .mixed)
+    }
+
+    func spokenStatus(_ status: HapticsStatus) -> String {
+        switch status {
+        case .off: localized("Trackpad haptics: off", "触控板触感：已关闭")
+        case .on: localized("Trackpad haptics: on", "触控板触感：已打开")
+        case .failed: localized("Trackpad haptics: couldn't turn off", "触控板触感：未能关闭")
+        case .unknown: localized("Trackpad haptics: unreadable", "触控板触感：无法读取")
+        }
+    }
+
+    func show(_ status: HapticsStatus, wantsOff: Bool, login: SMAppService.Status) {
+        let image = status.menuBarImage
+        image?.accessibilityDescription = spokenStatus(status)
+        statusItem?.button?.image = image
+        statusItem?.button?.toolTip = statusText(status)
+
+        statusLine?.title = statusText(status)
+        statusLine?.isHidden = !status.isProblem
+        statusSeparator?.isHidden = !status.isProblem
+
+        // Wanted off but not reading off: this item retries (see toggleHapticsOff), so it is an action, not a checkbox.
+        let retries = wantsOff && status != .off
+        hapticsOffItem?.title = retries
+            ? localized("Retry Turning Off Haptics", "重试关闭触感")
+            : localized("Disable Haptics", "关闭触感")
+        hapticsOffItem?.state = wantsOff && status == .off ? .on : .off
 
         loginItem?.state = login == .enabled ? .on : (login == .requiresApproval ? .mixed : .off)
         loginItem?.title = login == .requiresApproval
-            ? localized("Open at login: approval required", "登录时打开：需要批准")
-            : localized("Open at login", "登录时打开")
+            ? localized("Open at Login (Needs Approval)…", "登录时打开（待允许）…")
+            : localized("Open at Login", "登录时打开")
     }
 
     @objc private func toggleHapticsOff() {
@@ -219,17 +240,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func restoreAndQuit() {
-        let alert = NSAlert()
-        alert.messageText = localized("Restore and quit?", "还原并退出？")
-        alert.informativeText = localized(
-            "This turns trackpad haptics back on, turns off Open at login, and quits the app. Tap to click is not changed.",
-            "这会恢复触控板触感，关闭“登录时打开”，然后退出应用。“轻点来点按”不受影响。"
-        )
-        alert.addButton(withTitle: localized("Restore and quit", "还原并退出"))
-        alert.addButton(withTitle: localized("Cancel", "取消"))
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard restoreConfirmationAlert().runModal() == .alertFirstButtonReturn else { return }
 
         UserDefaults.standard.set(true, forKey: hapticsWantedKey)
+        while true {
+            let failures = restoreEverything()
+            refreshMenu()
+            if failures.isEmpty { break }
+            guard restoreFailedAlert(failures).runModal() == .alertFirstButtonReturn else { return }
+        }
+        // Reopening the app later turns haptics off again.
+        UserDefaults.standard.removeObject(forKey: hapticsWantedKey)
+        NSApp.terminate(nil)
+    }
+
+    private func restoreEverything() -> [String] {
         var failures: [String] = []
         if !haptics.setEnabled(true) {
             failures.append(localized("trackpad haptics", "触控板触感"))
@@ -237,29 +262,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if setLaunchAtLogin(false) {
             UserDefaults.standard.set(true, forKey: launchAtLoginConfiguredKey)
         } else {
-            failures.append(localized("Open at login", "登录时打开"))
+            failures.append(localized("Open at Login", "登录时打开"))
         }
-        guard failures.isEmpty else {
-            refreshMenu()
-            showAlert(
-                title: localized("Some settings could not be restored", "部分设置未能还原"),
-                message: localized("Not restored: ", "未还原：") + failures.joined(separator: localized(", ", "、"))
-                    + localized(". Successful items remain restored; you can retry the failed items.", "。成功项目保持还原状态，可以再次重试失败项目。")
-            )
-            return
-        }
-        refreshMenu()
-        // Reopening the app later turns haptics off again.
-        UserDefaults.standard.removeObject(forKey: hapticsWantedKey)
-        NSApp.terminate(nil)
+        return failures
     }
 
     @objc private func quit() { NSApp.terminate(nil) }
 
-    private func showAlert(title: String, message: String) {
+    // MARK: - Dialogs: a title, one sentence on what happens, and the buttons.
+
+    func moveToApplicationsAlert() -> NSAlert {
+        makeAlert(
+            title: localized("Move to Applications", "请移到“应用程序”文件夹"),
+            message: localized("Reopen it after moving.", "移动后重新打开。"),
+            confirm: localized("OK", "好"),
+            cancellable: false
+        )
+    }
+
+    func restoreConfirmationAlert() -> NSAlert {
+        makeAlert(
+            title: localized("Restore Haptics and Quit?", "恢复触感并退出？"),
+            message: localized(
+                "Trackpad haptics will turn back on, and Open at Login will turn off.",
+                "触控板触感会恢复，“登录时打开”会关闭。"
+            ),
+            confirm: localized("Restore and Quit", "恢复并退出")
+        )
+    }
+
+    func restoreFailedAlert(_ failures: [String]) -> NSAlert {
+        makeAlert(
+            title: localized("Couldn't Restore Everything", "未能全部恢复"),
+            message: localized("Not restored: ", "未恢复：")
+                + failures.joined(separator: localized(", ", "、")) + localized(".", "。"),
+            confirm: localized("Retry", "重试")
+        )
+    }
+
+    private func makeAlert(title: String, message: String, confirm: String, cancellable: Bool = true) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.runModal()
+        alert.addButton(withTitle: confirm)
+        if cancellable {
+            // AppKit binds Esc only to a button titled exactly "Cancel", not to "取消".
+            alert.addButton(withTitle: localized("Cancel", "取消")).keyEquivalent = "\u{1b}"
+        }
+        return alert
     }
 }
