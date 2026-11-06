@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             return true
         } catch {
-            if showErrors, loginItemFailedAlert(enabling: enabled).runModal() == .alertFirstButtonReturn {
+            if showErrors, present(loginItemFailedAlert(enabling: enabled)) == .alertFirstButtonReturn {
                 SMAppService.openSystemSettingsLoginItems()
             }
             return false
@@ -141,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func requireApplicationsInstallation() -> Bool {
         let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
         guard bundlePath.hasPrefix("/Applications/") else {
-            moveToApplicationsAlert().runModal()
+            present(moveToApplicationsAlert())
             NSApp.terminate(nil)
             return false
         }
@@ -232,14 +232,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func restoreAndQuit() {
-        guard restoreConfirmationAlert().runModal() == .alertFirstButtonReturn else { return }
+        guard present(restoreConfirmationAlert()) == .alertFirstButtonReturn else { return }
 
         UserDefaults.standard.set(true, forKey: hapticsWantedKey)
         while true {
             let failures = restoreEverything()
             refreshMenu()
             if failures.isEmpty { break }
-            guard restoreFailedAlert(failures).runModal() == .alertFirstButtonReturn else { return }
+            guard present(restoreFailedAlert(failures)) == .alertFirstButtonReturn else { return }
         }
         // Reopening the app later turns haptics off again.
         UserDefaults.standard.removeObject(forKey: hapticsWantedKey)
@@ -315,5 +315,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             alert.addButton(withTitle: localized("Cancel", "取消")).keyEquivalent = "\u{1b}"
         }
         return alert
+    }
+
+    @discardableResult
+    private func present(_ alert: NSAlert) -> NSApplication.ModalResponse {
+        // A menu bar app is not frontmost, so without this Esc and Return can go to whichever app is.
+        NSApp.activate()
+        return alert.runModal()
     }
 }
