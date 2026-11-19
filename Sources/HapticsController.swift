@@ -64,6 +64,12 @@ final class HapticsController {
         return isEnabled == enabled
     }
 
+    // From PR #2: never turn the actuator off blind. It is turned off only after it answers with a
+    // definite on or off; turning haptics back on is always tried.
+    nonisolated static func shouldWrite(enabled: Bool, current: Bool?) -> Bool {
+        enabled || current != nil
+    }
+
     private static func decode(_ value: Int) -> Bool? {
         value == 0 ? false : (value == 1 ? true : nil)
     }

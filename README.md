@@ -8,6 +8,8 @@ Silent Light Trackpad is a small, local menu bar app that turns off the built-in
 
 Apple’s stock click takes too much force, and the linear actuator keeps kicking back into the fingertip—after a long session, it honestly feels like a fast track to synovitis or tenosynovitis.
 
+If you only want a lighter, quieter click and your Mac supports it, try macOS's built-in **Quiet Click** first (System Settings → Trackpad); many recent MacBooks don't offer it, and this app turns the actuator off entirely instead.
+
 [中文说明](#中文说明)
 
 ## 0.6 is the slim version
@@ -25,7 +27,7 @@ The app no longer needs Accessibility permission. If an older version is still l
 ## Features
 
 - Turns off the built-in trackpad's haptic actuator (the click vibration).
-- Re-applies your choice after wake, when the login session becomes active, and whenever the menu opens (macOS turns haptics back on after sleep).
+- Re-applies your choice after wake, when the login session becomes active, and whenever the menu opens (macOS turns haptics back on after sleep). It reads the actuator first and leaves it alone if it cannot be read, so it never turns it off blind.
 - The menu bar icon shows the real state: a plain hand means haptics are off; a dimmed hand means you turned them back on; a hand with an exclamation badge means turning them off failed or the state cannot be read. Hover over the icon for the state in words.
 - Four menu items: **Disable Haptics**, **Open at Login**, **Restore Haptics and Quit…**, **Quit**. Only when something is wrong does the menu gain a status line, and **Disable Haptics** becomes **Retry Turning Off Haptics**.
 - Opens at login by default. English or Chinese menu, following the system language.
@@ -82,7 +84,7 @@ app="/Applications/Silent Light Trackpad.app/Contents/MacOS/SilentLightTrackpad"
 - Unchecking **Disable Haptics** turns haptics back on while the app keeps running; the choice is remembered across launches.
 - **Restore Haptics and Quit…** turns haptics back on, turns off Open at Login, and quits. Tap to click is not touched. Each step is checked; if one fails, the app stays open, names the failed item and offers **Retry**. Opening the app again later turns haptics off again.
 
-### Upgrading from 0.5.x
+### Upgrading from 0.5.x or earlier
 
 - Quit the old version with plain **Quit (keep settings)**, not **Restore everything and quit…**: the old restore turns haptics back on and turns off launch at login, and the new version will not turn launch at login back on by itself.
 - If you already used the old **Restore everything and quit…**, **Open at Login** stays off in the new version until you click it in the menu.
@@ -109,6 +111,8 @@ This project is released under the [MIT License](LICENSE).
 
 Silent Light Trackpad 是一个纯本地的 macOS 菜单栏工具。它关掉内置 Force Touch 触控板的触感马达，按下去照样能点击，只是不再震手。想要更轻，配合系统自带的“轻”点按力度和“轻点来点按”。
 
+只想要更轻的点按、机型支持的话，可以先试 macOS 自带的“静音点按”（系统设置 → 触控板）；不少新款 MacBook 没有这一项，本工具则是把马达整个关掉。
+
 ### 0.6 是收缩版
 
 0.5.1 及以前还带一个自制的“轻压点击”引擎：通过 [OpenMultitouchSupport](https://github.com/Kyome22/OpenMultitouchSupport)（读取触控板原始触摸数据的开源库）读压力，在低于系统“轻”档的力度上生成点击。**0.6.0 删掉了这个引擎，只保留关闭触感马达。** 带引擎的最后一版是提交 `4332153`（0.5.1），留在 git 历史里，随时能找回。
@@ -124,7 +128,7 @@ Silent Light Trackpad 是一个纯本地的 macOS 菜单栏工具。它关掉内
 ### 主要功能
 
 - 关闭内置触控板的触感马达（点击震动）。
-- 唤醒、登录会话恢复以及每次打开菜单时，按你的选择重新设置一次马达（系统睡眠唤醒后会把触感打开）。
+- 唤醒、登录会话恢复以及每次打开菜单时，按你的选择重新设置一次马达（系统睡眠唤醒后会把触感打开）。关之前先读一次马达状态，读不出来就不动它，不会盲关。
 - 菜单栏图标显示真实状态：普通的手 = 触感已关闭；变暗的手 = 你选择了打开触感；手带感叹号 = 没关上或无法读取。悬停在图标上能看到文字状态。
 - 菜单只有四项：**关闭触感**、**登录时打开**、**恢复触感并退出…**、**退出**。只有出问题时才多一行状态，同时 **关闭触感** 换成 **重试关闭触感**。
 - 默认登录时打开。菜单随系统语言显示中文或英文。
@@ -163,7 +167,7 @@ open "/Applications/Silent Light Trackpad.app"
 - 取消勾选 **关闭触感**：应用继续运行，触感恢复；这个选择重启后仍然有效。
 - **恢复触感并退出…**：恢复触感，关闭“登录时打开”，然后退出。不碰“轻点来点按”。每一步都会回读检查；有一步失败，应用不退出，写明哪一项没恢复，并可以点 **重试**。之后再打开应用，触感又会关上。
 
-#### 从 0.5.x 升级
+#### 从 0.5.x 或更早版本升级
 
 - 旧版用普通的 **退出（保留当前设置）** 退出，不要用 **一切还原并退出…**：旧版的还原会打开触感、关掉登录自启，新版不会自己把登录项开回来。
 - 如果已经在旧版里用过 **一切还原并退出…**，新版的 **登录时打开** 会一直关着，要在菜单里点一下才会打开。

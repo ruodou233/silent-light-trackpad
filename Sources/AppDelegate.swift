@@ -133,8 +133,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         syncHaptics()
     }
 
+    // Launch, wake, session activation, the menu and Retry all come through here.
     private func syncHaptics() {
-        _ = haptics.setEnabled(!wantsHapticsOff)
+        let enable = !wantsHapticsOff
+        // Unreadable: change nothing; the icon shows the badge and the menu offers Retry.
+        if HapticsController.shouldWrite(enabled: enable, current: haptics.readEnabled()) {
+            _ = haptics.setEnabled(enable)
+        }
         refreshMenu()
     }
 
