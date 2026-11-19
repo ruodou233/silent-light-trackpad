@@ -1,4 +1,4 @@
-# Silent Light Trackpad
+# MacBook 触控板静音｜MacBook Trackpad Haptics
 
 **Turn off the MacBook trackpad's click vibration (haptic feedback) on macOS.**
 
